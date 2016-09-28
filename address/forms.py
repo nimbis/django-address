@@ -1,8 +1,9 @@
 from django import forms
 # from uni_form.helpers import *
 from django.utils.safestring import mark_safe
-from .models import Address, to_python
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
+from .models import Address, to_python
 
 import logging
 logger = logging.getLogger(__name__)
@@ -16,30 +17,23 @@ if sys.version > '3':
 
 __all__ = ['AddressWidget', 'AddressField']
 
+if not settings.GOOGLE_MAPS_API_KEY:
+    raise ImproperlyConfigured("GOOGLE_MAPS_API_KEY is not configured in settings.py")
+
 class AddressWidget(forms.TextInput):
     components = [('country', 'country'), ('country_code', 'country_short'),
-                  ('locality', 'locality'), ('sublocality', 'sublocality'),
-                  ('postal_code', 'postal_code'), ('route', 'route'),
-                  ('street_number', 'street_number'),
+                  ('locality', 'locality'), ('postal_code', 'postal_code'),
+                  ('route', 'route'), ('street_number', 'street_number'),
                   ('state', 'administrative_area_level_1'),
                   ('state_code', 'administrative_area_level_1_short'),
                   ('formatted', 'formatted_address'),
                   ('latitude', 'lat'), ('longitude', 'lng')]
 
-    def _media(self):
-        maps_api = 'https://maps.googleapis.com/maps/api/js'
-        query_parms = '?libraries=places&sensor=false'
-
-        if getattr(settings, 'GOOGLE_API_KEY', None) is not None:
-            query_parms += '&key={}'.format(settings.GOOGLE_API_KEY)
-
-        return forms.Media(js=(
-            'js/jquery.min.js',
-            'address/js/jquery.geocomplete.js',
-            'address/js/address.js',
-            maps_api + query_parms))
-
-    media = property(_media)
+    class Media:
+        js = (
+              'https://maps.googleapis.com/maps/api/js?libraries=places&sensor=false&key=%s' % settings.GOOGLE_MAPS_API_KEY,
+              'js/jquery.geocomplete.min.js',
+              'address/js/address.js')
 
     def __init__(self, *args, **kwargs):
         attrs = kwargs.get('attrs', {})
