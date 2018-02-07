@@ -29,6 +29,7 @@ def _to_python(value):
     state = value.get('state', '')
     state_code = value.get('state_code', '')
     locality = value.get('locality', '')
+    sublocality = value.get('sublocality', '')
     postal_code = value.get('postal_code', '')
     street_number = value.get('street_number', '')
     route = value.get('route', '')
@@ -39,6 +40,10 @@ def _to_python(value):
     # If there is no value (empty raw) then return None.
     if not raw:
         return None
+
+    # Fix issue with NYC boroughs (https://code.google.com/p/gmaps-api-issues/issues/detail?id=635)
+    if not locality and sublocality:
+        locality = sublocality
 
     # If we have an inconsistent set of value bail out now.
     if (country or state or locality) and not (country and state and locality):
@@ -72,7 +77,7 @@ def _to_python(value):
 
     # Handle the locality.
     try:
-        locality_obj = Locality.objects.get(name=locality, state=state_obj)
+        locality_obj = Locality.objects.get(name=locality, postal_code=postal_code, state=state_obj)
     except Locality.DoesNotExist:
         if locality:
             locality_obj = Locality.objects.create(name=locality, postal_code=postal_code, state=state_obj)
@@ -168,7 +173,7 @@ class Country(models.Model):
 class State(models.Model):
     name = models.CharField(max_length=165, blank=True)
     code = models.CharField(max_length=3, blank=True)
-    country = models.ForeignKey(Country, related_name='states')
+    country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name='states')
 
     class Meta:
         unique_together = ('name', 'country')
@@ -192,11 +197,11 @@ class State(models.Model):
 class Locality(models.Model):
     name = models.CharField(max_length=165, blank=True)
     postal_code = models.CharField(max_length=10, blank=True)
-    state = models.ForeignKey(State, related_name='localities')
+    state = models.ForeignKey(State, on_delete=models.CASCADE, related_name='localities')
 
     class Meta:
         verbose_name_plural = 'Localities'
-        unique_together = ('name', 'state')
+        unique_together = ('name', 'postal_code', 'state')
         ordering = ('state', 'name')
 
     def __str__(self):
@@ -220,7 +225,7 @@ class Locality(models.Model):
 class Address(models.Model):
     street_number = models.CharField(max_length=20, blank=True)
     route = models.CharField(max_length=100, blank=True)
-    locality = models.ForeignKey(Locality, related_name='addresses', blank=True, null=True)
+    locality = models.ForeignKey(Locality, on_delete=models.CASCADE, related_name='addresses', blank=True, null=True)
     raw = models.CharField(max_length=200)
     formatted = models.CharField(max_length=200, blank=True)
     latitude = models.FloatField(blank=True, null=True)
@@ -284,7 +289,7 @@ class AddressDescriptor(ForwardManyToOneDescriptor):
 class AddressField(models.ForeignKey):
     description = 'An address'
 
-    def __init__(self, **kwargs):
+    def __init__(self, *args, **kwargs):
         kwargs['to'] = 'address.Address'
         super(AddressField, self).__init__(**kwargs)
 

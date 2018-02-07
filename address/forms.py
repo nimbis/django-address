@@ -1,20 +1,26 @@
 from django import forms
 # from uni_form.helpers import *
 from django.utils.safestring import mark_safe
-from .models import Address, to_python
 from django.conf import settings
-
+from django.core.exceptions import ImproperlyConfigured
+from .models import Address, to_python
 import logging
-logger = logging.getLogger(__name__)
 
 # Python 3 fixes.
 import sys
+
 if sys.version > '3':
     long = int
     basestring = (str, bytes)
     unicode = str
 
+logger = logging.getLogger(__name__)
+
 __all__ = ['AddressWidget', 'AddressField']
+
+if not settings.GOOGLE_API_KEY:
+    raise ImproperlyConfigured("GOOGLE_API_KEY is not configured in settings.py")
+
 
 class AddressWidget(forms.TextInput):
     components = [('country', 'country'), ('country_code', 'country_short'),
@@ -25,20 +31,11 @@ class AddressWidget(forms.TextInput):
                   ('formatted', 'formatted_address'),
                   ('latitude', 'lat'), ('longitude', 'lng')]
 
-    def _media(self):
-        maps_api = 'https://maps.googleapis.com/maps/api/js'
-        query_parms = '?libraries=places&sensor=false'
-
-        if getattr(settings, 'GOOGLE_API_KEY', None) is not None:
-            query_parms += '&key={}'.format(settings.GOOGLE_API_KEY)
-
-        return forms.Media(js=(
-            'js/jquery.min.js',
-            'address/js/jquery.geocomplete.js',
-            'address/js/address.js',
-            maps_api + query_parms))
-
-    media = property(_media)
+    class Media:
+        js = (
+            'https://maps.googleapis.com/maps/api/js?libraries=places&sensor=false&key=%s' % settings.GOOGLE_API_KEY,
+            'js/jquery.geocomplete.min.js',
+            'address/js/address.js')
 
     def __init__(self, *args, **kwargs):
         attrs = kwargs.get('attrs', {})
@@ -67,9 +64,9 @@ class AddressWidget(forms.TextInput):
         elems = [super(AddressWidget, self).render(name, ad.get('formatted', None), attrs, **kwargs)]
 
         # Now add the hidden fields.
-        elems.append('<div id="%s_components">'%name)
+        elems.append('<div id="%s_components">' % name)
         for com in self.components:
-            elems.append('<input type="hidden" name="%s_%s" data-geo="%s" value="%s" />'%(
+            elems.append('<input type="hidden" name="%s_%s" data-geo="%s" value="%s" />' % (
                 name, com[0], com[1], ad.get(com[0], ''))
             )
         elems.append('</div>')
@@ -83,6 +80,7 @@ class AddressWidget(forms.TextInput):
         ad = dict([(c[0], data.get(name + '_' + c[0], '')) for c in self.components])
         ad['raw'] = raw
         return ad
+
 
 class AddressField(forms.ModelChoiceField):
     widget = AddressWidget
