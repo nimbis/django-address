@@ -31,12 +31,6 @@ class AddressWidget(forms.TextInput):
                   ('formatted', 'formatted_address'),
                   ('latitude', 'lat'), ('longitude', 'lng')]
 
-    class Media:
-        js = (
-            'https://maps.googleapis.com/maps/api/js?libraries=places&sensor=false&key=%s' % settings.GOOGLE_API_KEY,
-            'js/jquery.geocomplete.min.js',
-            'address/js/address.js')
-
     def __init__(self, *args, **kwargs):
         attrs = kwargs.get('attrs', {})
         classes = attrs.get('class', '')
