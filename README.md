@@ -29,7 +29,7 @@ INSTALLED_APPS = [
 ]
 ```
 
-You wil need to add your Google Maps API key to `settings.py` too:
+You will need to add your Google Maps API key to `settings.py` too:
 ```
 GOOGLE_API_KEY = 'AIzaSyD--your-google-maps-key-SjQBE'
 ```
