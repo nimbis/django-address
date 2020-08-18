@@ -26,30 +26,6 @@ class AddressWidget(forms.TextInput):
                   ('formatted', 'formatted_address'),
                   ('latitude', 'lat'), ('longitude', 'lng')]
 
-    class Media:
-        """Media defined as a dynamic property instead of an inner class."""
-        js = [
-            'https://maps.googleapis.com/maps/api/js?libraries=places&key=%s' % settings.GOOGLE_API_KEY,
-            'js/jquery.geocomplete.min.js',
-            'address/js/address.js',
-        ]
-
-        if JQUERY_URL:
-            js.insert(0, JQUERY_URL)
-        elif JQUERY_URL is not False:
-            vendor = '' if django.VERSION < (1, 9, 0) else 'vendor/jquery/'
-            extra = '' if settings.DEBUG else '.min'
-
-            jquery_paths = [
-                '{}jquery{}.js'.format(vendor, extra),
-                'jquery.init.js',
-            ]
-
-            if USE_DJANGO_JQUERY:
-                jquery_paths = ['admin/js/{}'.format(path) for path in jquery_paths]
-
-            js.extend(jquery_paths)
-
     def __init__(self, *args, **kwargs):
         attrs = kwargs.get('attrs', {})
         classes = attrs.get('class', '')
